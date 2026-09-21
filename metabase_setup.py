@@ -17,7 +17,8 @@ def api(method,path,payload=None):
     request=urllib.request.Request(BASE+path, data=json.dumps(payload).encode() if payload is not None else None,
                                   headers=headers,method=method)
     with urllib.request.urlopen(request,timeout=180) as response:
-        return json.load(response)
+        body=response.read()
+        return json.loads(body) if body else None
 
 def main():
     global session
