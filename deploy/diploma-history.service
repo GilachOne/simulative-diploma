@@ -9,6 +9,7 @@ User=diploma
 WorkingDirectory=/opt/simulative-diploma
 EnvironmentFile=/etc/simulative-diploma.env
 ExecStart=/opt/simulative-diploma/.venv/bin/python etl.py --start 2022-01-01
+ExecStartPost=/opt/simulative-diploma/.venv/bin/python verify_history.py --output /var/www/diploma-status/history.json
 NoNewPrivileges=true
 PrivateTmp=true
 TimeoutStartSec=infinity
