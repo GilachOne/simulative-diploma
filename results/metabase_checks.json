@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Выручка после скидок",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Активные клиенты",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Товары с продажами",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Загружено дней API",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Выручка по месяцам",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Активные клиенты по месяцам",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Топ-10 SKU по выручке",
+    "status": "completed",
+    "rows": 10
+  },
+  {
+    "name": "Исключения по причинам",
+    "status": "completed",
+    "rows": 5
+  },
+  {
+    "name": "Доля скидки от суммы до скидок, %",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Исключено строк источника, %",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Товарные строки покупки",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Ожидается дней в периоде",
+    "status": "completed",
+    "rows": 1
+  },
+  {
+    "name": "Контроль ежедневных загрузок",
+    "status": "completed",
+    "rows": 31
+  }
+]

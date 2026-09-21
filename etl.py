@@ -44,6 +44,8 @@ def fetch_day(day):
             data = json.load(f)
         if not isinstance(data, list):
             raise ValueError('Cached response must be a list')
+        if any(not isinstance(row, dict) or row.get('purchase_datetime') != str(day) for row in data):
+            raise ValueError('Cached response contains mixed dates')
         return data
     last = None
     for attempt in range(5):

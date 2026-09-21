@@ -1,0 +1,16 @@
+[Unit]
+Description=Simulative diploma initial historical import
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=diploma
+WorkingDirectory=/opt/simulative-diploma
+EnvironmentFile=/etc/simulative-diploma.env
+ExecStart=/opt/simulative-diploma/.venv/bin/python etl.py --start 2022-01-01
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=infinity
+Restart=on-failure
+RestartSec=5min
