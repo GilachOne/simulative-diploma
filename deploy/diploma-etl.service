@@ -1,0 +1,16 @@
+[Unit]
+Description=Simulative diploma previous-day API import
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=diploma
+WorkingDirectory=/opt/simulative-diploma
+EnvironmentFile=/etc/simulative-diploma.env
+ExecStart=/opt/simulative-diploma/.venv/bin/python etl.py --daily
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=30min
+Restart=on-failure
+RestartSec=5min

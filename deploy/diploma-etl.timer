@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily import at 07:00 Moscow time
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 Europe/Moscow
+Persistent=true
+Unit=diploma-etl.service
+
+[Install]
+WantedBy=timers.target

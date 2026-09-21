@@ -1,0 +1,10 @@
+.env
+.venv/
+.packages/
+__pycache__/
+*.pyc
+data/
+logs/
+runtime/
+.ipynb_checkpoints/
+access-private*

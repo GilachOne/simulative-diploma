@@ -1,0 +1,18 @@
+[Unit]
+Description=Metabase for Simulative diploma
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=metabase
+WorkingDirectory=/opt/metabase
+EnvironmentFile=/etc/metabase.env
+ExecStart=/usr/bin/java -Xmx2g --add-opens java.base/java.nio=ALL-UNNAMED -jar /opt/metabase/metabase.jar
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
