@@ -31,7 +31,18 @@ class ValidationTests(unittest.TestCase):
 
     def test_missing_date_not_imputed(self):
         self.row['purchase_datetime'] = None
-        with self.assertRaises(TypeError): validate(self.row, self.day)
+        with self.assertRaisesRegex(ValueError, 'purchase_datetime: expected'):
+            validate(self.row, self.day)
+
+    def test_missing_date_has_field_name(self):
+        del self.row['purchase_datetime']
+        with self.assertRaisesRegex(ValueError, 'purchase_datetime: required'):
+            validate(self.row, self.day)
+
+    def test_invalid_date_has_field_name(self):
+        self.row['purchase_datetime'] = '2023-02-30'
+        with self.assertRaisesRegex(ValueError, 'purchase_datetime: invalid'):
+            validate(self.row, self.day)
 
     def test_invalid_discount(self):
         self.row.update(discount_per_item=11, total_price=0)

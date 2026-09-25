@@ -17,6 +17,7 @@
 5. Восстановить проверенную локальную БД из резервной копии, если она есть, затем заполнить недостающую историю последовательной загрузкой (уже записанные даты пропускаются):
 
    ```bash
+   /opt/simulative-diploma/.venv/bin/python etl.py --init-schema
    /opt/simulative-diploma/.venv/bin/python etl.py --start 2022-01-01
    ```
 

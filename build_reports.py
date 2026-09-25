@@ -66,9 +66,12 @@ axes[0].set(ylabel='Млрд ден. ед.',title='Выручка после о�
 axes[1].bar(q.index,100*q.rejected_rows/q.source_rows,color='#c66b44')
 axes[1].set(ylabel='Исключено строк, %',xlabel='Месяц')
 axes[1].tick_params(axis='x',rotation=45)
-plt.tight_layout(); plt.show()'''),
+plt.tight_layout(); plt.show()
+peak=monthly.loc[monthly.revenue.idxmax()]
+low=monthly.loc[monthly.revenue.idxmin()]
+display(Markdown(f'**Вывод.** Максимальная наблюдаемая выручка в {peak.month:%Y-%m}: {peak.revenue/1e9:.2f} млрд ден. ед.; минимальная в {low.month:%Y-%m}: {low.revenue/1e9:.2f} млрд. Разрыв между максимумом и минимумом составляет {(peak.revenue/low.revenue-1):.1%}. Один год не доказывает повторяющуюся сезонность. **Действие:** проверить полноту загрузок, ассортимент, остатки и промо этих месяцев перед изменением плана закупок.'))'''),
 ('md','''## 2. ABC-анализ
-Товары сортируются по выручке. Группа A включает позиции до достижения 80% накопленной выручки, B — следующие до 95%, C — остальные. Товар, пересекающий порог, остаётся в предыдущей группе: классификация опирается на накопленную долю **до** текущего товара. Нулевая выручка относится к C. Это сегментация вклада в выручку, а не маржи.'''),
+Товары сортируются по выручке. Группа A включает позиции до достижения 80% накопленной выручки, B — следующие до 95%, C — остальные. Товар, пересекающий порог, остаётся в предыдущей группе: классификация опирается на накопленную долю **до** текущего товара. Нулевая выручка относится к C, но группа C также включает товары с положительной выручкой за пределами первых 95% накопленного вклада. A, B и C не означают хороший или плохой товар. Это сегментация вклада в выручку, а не маржи.'''),
 ('code','''products=products.sort_values(['revenue','product_id'],ascending=[False,True]).reset_index(drop=True)
 products['revenue_share']=products.revenue/products.revenue.sum()
 before=products.revenue_share.cumsum()-products.revenue_share
@@ -79,12 +82,17 @@ abc['revenue_share']=abc.revenue/products.revenue.sum()
 display(abc)
 top=products.head(10)[['product_id','revenue','units','clients','discount_share','ABC']]
 display(top)
+bottom=products.tail(10).sort_values(['revenue','product_id'])[['product_id','revenue','units','clients','discount_share','ABC']]
+display(Markdown('### 10 SKU с наименьшей наблюдаемой выручкой'))
+display(bottom)
+bottom.to_csv(OUT/'assortment_bottom10.csv',index=False,encoding='utf-8-sig')
 fig,ax=plt.subplots(figsize=(9,4))
 ax.plot(100*(np.arange(len(products))+1)/len(products),100*products.revenue_share.cumsum(),color='#178b88')
 ax.axhline(80,ls='--',color='gray'); ax.axhline(95,ls=':',color='gray')
 ax.set(xlabel='Доля SKU, %',ylabel='Накопленная доля выручки, %',title='Концентрация выручки по товарам')
 plt.tight_layout(); plt.show()
-abc.to_csv(OUT/'assortment_abc.csv',encoding='utf-8-sig')'''),
+abc.to_csv(OUT/'assortment_abc.csv',encoding='utf-8-sig')
+display(Markdown(f'**Вывод.** {int(abc.loc["A","skus"]):,} товаров группы A дают {abc.loc["A","revenue_share"]:.1%} выручки; {int(abc.loc["C","skus"]):,} товаров группы C — {abc.loc["C","revenue_share"]:.1%}. **Действие:** контролировать доступность A; для показанных 10 SKU из хвоста проверить маржу, остатки и сезонность, прежде чем обсуждать вывод из ассортимента.'))'''),
 ('md','''## 3. Стабильность и сопоставимость товаров
 Для каждого SKU считаются число месяцев с продажами и коэффициент вариации месячного количества (стандартное отклонение / среднее). Неактивный месяц заполняется нулём только в пределах полного календарного 2023 года. Это ноль **наблюдаемых принятых продаж**, а не подтверждение отсутствия спроса.
 
@@ -153,9 +161,10 @@ axes[0].bar(freq.index,freq.values,color='#178b88')
 axes[0].set(xlabel='Дней с покупками за год',ylabel='Клиенты',title='Частота наблюдаемой активности')
 axes[1].hist(customers.recency_days,bins=24,color='#4d6b98')
 axes[1].set(xlabel='Дней с последней покупки',ylabel='Клиенты',title='Давность на 01.01.2024')
-plt.tight_layout();plt.show()'''),
+plt.tight_layout();plt.show()
+display(Markdown(f'**Вывод.** {1-repeat_share:.1%} клиентов покупали только в один наблюдаемый день; медианная давность покупки — {customers.recency_days.median():.0f} дней. Это не доказательство оттока. **Действие:** отдельно тестировать вторую покупку у недавних клиентов и возврат давно не покупавших, с одинаковым окном наблюдения.'))'''),
 ('md','''## 2. Когорты и окно наблюдения
-В каждой когорте знаменатель — число клиентов, впервые наблюдённых в данном месяце 2023 года. В ячейках — доля этих же клиентов с покупками в соответствующем последующем месяце. Это календарное месячное удержание, а не D30. Будущие для когорты месяцы оставлены пустыми, а не заполнены нулями.
+В каждой когорте знаменатель — число клиентов, впервые наблюдённых в данном месяце 2023 года. В ячейках — доля этих же клиентов с покупками в соответствующем последующем месяце. Это календарное месячное удержание, а не D30. Будущие для когорты месяцы оставлены пустыми, а не заполнены нулями. На тепловой карте нулевой месяц со 100% скрыт; верхняя граница цвета равна максимуму фактического удержания месяцев 1–11. Полная таблица сохраняет нулевой месяц.
 
 Декабрьскую когорту нельзя сравнивать с январской по годовому M: у них разная длительность наблюдения. Для отдельной метрики возврата за 60 дней берутся только клиенты с первой наблюдаемой покупкой не позднее 01.11.2023. Возврат означает другой день покупки в пределах последующих 60 дней. Ошибки исходных дат могут занижать показатель.'''),
 ('code','''cohorts=pd.read_csv(DATA/'cohorts.csv',parse_dates=['cohort','activity_month'])
@@ -168,14 +177,18 @@ for cohort in retention.index:
     retention.loc[cohort,range(last_age+1)]=retention.loc[cohort,range(last_age+1)].fillna(0)
 display(retention)
 fig,ax=plt.subplots(figsize=(11,5))
-image=ax.imshow(retention.values*100,cmap='YlGnBu',vmin=0,vmax=100,aspect='auto')
-ax.set_xticks(range(12),range(12));ax.set_yticks(range(len(retention)),retention.index.strftime('%Y-%m'))
+shown=retention.drop(columns=0)
+vmax=float(np.nanmax(shown.values)*100) or 1
+image=ax.imshow(shown.values*100,cmap='YlGnBu',vmin=0,vmax=vmax,aspect='auto')
+ax.set_xticks(range(11),range(1,12));ax.set_yticks(range(len(retention)),retention.index.strftime('%Y-%m'))
 ax.set(xlabel='Месяцев после первого наблюдения в 2023',ylabel='Когорта',title='Календарное удержание, %')
 for i in range(len(retention)):
- for j in range(12):
-  val=retention.iloc[i,j]
-  if pd.notna(val):ax.text(j,i,f'{100*val:.0f}',ha='center',va='center',fontsize=8,color='white' if val>.55 else 'black')
+ for j in range(11):
+  val=shown.iloc[i,j]
+  if pd.notna(val):ax.text(j,i,f'{100*val:.0f}',ha='center',va='center',fontsize=8,color='white' if val*100>vmax*.55 else 'black')
 fig.colorbar(image,ax=ax);plt.tight_layout();plt.show()
+m1=retention[1].dropna()
+display(Markdown(f'**Вывод.** Возврат в следующий календарный месяц у наблюдаемых когорт находится в диапазоне {m1.min():.1%}–{m1.max():.1%}. Декабрь не имеет такого окна и исключён из сравнения. **Действие:** оценивать CRM по когортам одинакового возраста и сравнивать кампанию с контрольной группой.'))
 r60=pd.read_csv(DATA/'repeat_60.csv').iloc[0]
 display(Markdown(f'Из **{int(r60.eligible_clients):,}** клиентов с полным 60-дневным окном вернулись **{int(r60.returned_clients):,}**, то есть **{r60.returned_clients/r60.eligible_clients:.2%}**. Это описание наблюдаемых данных, не причинный эффект CRM.'))
 retention.to_csv(OUT/'clients_retention.csv',encoding='utf-8-sig')'''),
@@ -208,7 +221,8 @@ customers[['client_id','segment']].to_csv(DATA/'client_segments_private.csv',ind
 fig,ax=plt.subplots(figsize=(9,4))
 segments[['client_share','revenue_share']].mul(100).plot.barh(ax=ax,color=['#4d6b98','#178b88'])
 ax.set(xlabel='Доля, %',ylabel='',title='Размер и денежный вклад сегментов');ax.legend(['Доля клиентов','Доля выручки'])
-plt.tight_layout();plt.show()'''),
+plt.tight_layout();plt.show()
+display(Markdown(f'**Вывод.** Сегмент «Вернуть ценных» включает {int(segments.loc["Вернуть ценных","clients"]):,} клиентов и даёт {segments.loc["Вернуть ценных","revenue_share"]:.1%} годовой выручки. **Действие:** начать с ограниченного пилота на этой аудитории, считать дополнительный доход относительно контроля; прошлый денежный вклад не равен будущему эффекту кампании.'))'''),
 ('md','''## 4. Две конкретные CRM-проверки
 
 ### Кампания A: вернуть ценных клиентов

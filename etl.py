@@ -68,7 +68,8 @@ def fetch_day(day):
         except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
             last = exc
             # Do not log URLs with credentials, raw responses or connection strings.
-            logging.warning('fetch %s attempt %s failed (%s, status=%s)', day, attempt+1, type(exc).__name__, getattr(exc,'code','n/a'))
+            log = logging.error if attempt == 4 else logging.warning
+            log('fetch %s attempt %s/5 failed (%s, status=%s)', day, attempt+1, type(exc).__name__, getattr(exc,'code','n/a'))
             if attempt == 4:
                 break
             retry_after = exc.headers.get('Retry-After') if isinstance(exc, urllib.error.HTTPError) else None
@@ -94,7 +95,15 @@ def money(value, field):
 def validate(row, day):
     if not isinstance(row, dict):
         raise ValueError('row must be an object')
-    actual_day = date.fromisoformat(row['purchase_datetime'])
+    if 'purchase_datetime' not in row:
+        raise ValueError('purchase_datetime: required field is missing')
+    value = row['purchase_datetime']
+    if not isinstance(value, str):
+        raise ValueError('purchase_datetime: expected ISO date string YYYY-MM-DD')
+    try:
+        actual_day = date.fromisoformat(value)
+    except ValueError:
+        raise ValueError('purchase_datetime: invalid ISO date') from None
     if actual_day != day:
         raise ValueError('date mismatch')
     client = integer(row['client_id'], 'client_id')
@@ -163,8 +172,20 @@ def main():
     parser.add_argument('--start', type=date.fromisoformat)
     parser.add_argument('--end', type=date.fromisoformat, help='inclusive')
     parser.add_argument('--daily', action='store_true')
+    parser.add_argument('--init-schema', action='store_true', help='apply schema explicitly and exit')
     parser.add_argument('--workers', type=int, default=1, choices=[1], help='API requires sequential requests')
     args = parser.parse_args()
+    if args.init_schema:
+        if args.start or args.end or args.daily:
+            parser.error('--init-schema cannot be combined with a load')
+        conn = connect()
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute((ROOT/'sql/schema.sql').read_text('utf-8'))
+        finally:
+            conn.close()
+        return 0
     (ROOT / 'logs').mkdir(exist_ok=True)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s',
         handlers=[logging.StreamHandler(), logging.FileHandler(ROOT/'logs/etl.log', encoding='utf-8')])
@@ -179,13 +200,6 @@ def main():
             parser.error('Specify --start or --daily')
     if start < FIRST_DATE or end < start or end > yesterday:
         parser.error('Range must be between 2022-01-01 and yesterday')
-    conn = connect()
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute((ROOT/'sql/schema.sql').read_text('utf-8'))
-    finally:
-        conn.close()
     days = [start+timedelta(days=i) for i in range((end-start).days+1)]
     failures = []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
