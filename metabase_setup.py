@@ -69,7 +69,6 @@ def main():
     # Keep question IDs stable when changing their presentation.
     old_names = {
         'Выручка по месяцам': 'Динамика выручки по месяцам',
-        'Выручка после скидок': 'Выручка после скидок, млрд ден. ед.',
         'Активные клиенты по месяцам': 'Уникальные клиенты по месяцам',
     }
     aliases = {'revenue':'Выручка', 'clients':'Клиенты', 'products':'SKU',
@@ -96,8 +95,7 @@ def main():
             viz.update({'scalar.decimals':2})
             column_name=re.search(r'AS "([^"]+)"',query).group(1)
             viz['column_settings']={json.dumps(['name',column_name],ensure_ascii=False,separators=(',',':')):
-                {'decimals':2 if 'Выручка'==column_name or '%' in column_name else 0,
-                 **({'scale':1e-9,'number_separators':', '} if column_name=='Выручка' else {})}}
+                {'decimals':2 if 'Выручка'==column_name or '%' in column_name else 0}}
         elif display in ('line','bar'):
             viz.update({'graph.x_axis.title_text':'','graph.y_axis.title_text':
                 'Клиенты' if 'клиенты по' in name else 'Денежные единицы',
@@ -121,6 +119,36 @@ def main():
                 ORDER BY month"""
             viz={**c[3],'graph.metrics':['Выручка','Среднее за 3 предыдущих месяца']}
             cards[i]=(c[0],c[1],query,viz,*c[4:])
+    # Trend supports forced compact formatting with an unscaled hover value.
+    # Exactly one row represents the entire selected range; its date is the
+    # range end, not a daily/monthly breakout. Compare equal-length ranges only
+    # when both ranges are fully loaded; missing history is never treated as zero.
+    for i,c in enumerate(cards):
+        if c[0]=='Выручка после скидок':
+            query="""WITH bounds AS (
+                SELECT {{start_date}}::date AS start_date,{{end_date}}::date AS end_date
+            ), totals AS (
+                SELECT coalesce(sum(total_price) FILTER (WHERE sale_date>=b.start_date),0) AS current_total,
+                    coalesce(sum(total_price) FILTER (WHERE sale_date<b.start_date),0) AS previous_total
+                FROM sales CROSS JOIN bounds b
+                WHERE sale_date BETWEEN b.start_date-(b.end_date-b.start_date+1) AND b.end_date
+            ), coverage AS (
+                SELECT count(*) FILTER (WHERE sale_date>=b.start_date) AS current_days,
+                    count(*) FILTER (WHERE sale_date<b.start_date) AS previous_days
+                FROM etl_days CROSS JOIN bounds b
+                WHERE sale_date BETWEEN b.start_date-(b.end_date-b.start_date+1) AND b.end_date
+            ) SELECT b.end_date AS "Конец периода",t.current_total AS "Выручка",
+                CASE WHEN c.current_days=b.end_date-b.start_date+1
+                      AND c.previous_days=b.end_date-b.start_date+1
+                     THEN t.previous_total END AS "Предыдущий период"
+                FROM bounds b CROSS JOIN totals t CROSS JOIN coverage c"""
+            viz={'scalar.field':'Выручка',
+                 'scalar.comparisons':[{'id':'revenue-previous-range','type':'anotherColumn',
+                     'column':'Предыдущий период','label':'пред. периодом той же длины'}],
+                 'scalar.compact_primary_number':True,
+                 'column_settings':{json.dumps(['name','Выручка'],ensure_ascii=False,separators=(',',':')):
+                     {'decimals':2,'number_separators':', '}}}
+            cards[i]=(c[0],'smartscalar',query,viz,*c[4:])
     cards.extend([
         ('Точная выручка за выбранный период','table',f'SELECT sum(total_price) AS "Выручка, ден. ед." FROM sales WHERE {where}',{},16,0,24,4),
         ('Антитоп-10 SKU по выручке','bar',f'SELECT product_id::text AS "SKU",sum(total_price) AS "Выручка" FROM sales WHERE {where} GROUP BY 1 ORDER BY 2,1 LIMIT 10',
